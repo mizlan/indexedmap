@@ -1,0 +1,96 @@
+exception Insert of string
+exception ColorChange of string
+
+module C = struct
+  type t = R | B | BB | NB
+
+  let blacken = function
+    | NB -> R
+    | R -> B
+    | B -> BB
+    | _ -> raise (ColorChange "attempt to blacken NegativeBlack")
+
+  let redden = function
+    | BB -> B
+    | B -> R
+    | R -> NB
+    | _ -> raise (ColorChange "attempt to redden NegativeBlack")
+end
+
+type 'a tree = E | EE | T of C.t * 'a * 'a tree * 'a tree * int
+
+let blacken t =
+  match t with E | EE -> t | T (c, v, l, r, s) -> T (C.blacken c, v, l, r, s)
+
+let redden t =
+  match t with E | EE -> t | T (c, v, l, r, s) -> T (C.redden c, v, l, r, s)
+
+let is_bb = function EE | T (C.BB, _, _, _, _) -> true | _ -> false
+let sz tree = match tree with E | EE -> 0 | T (_, _, _, _, s) -> s
+
+let rec member x tree =
+  match tree with
+  | E | EE -> false
+  | T (_, value, left, right, _) ->
+      if x == value then true
+      else if x < value then member x left
+      else member x right
+
+let rec balance = function
+  | C.B, z, T (C.R, y, T (C.R, x, a, b, _), c, _), d, _
+  | C.B, z, T (C.R, x, a, T (C.R, y, b, c, _), _), d, _
+  | C.B, x, a, T (C.R, z, T (C.R, y, b, c, _), d, _), _
+  | C.B, x, a, T (C.R, y, b, T (C.R, z, c, d, _), _), _ ->
+      let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
+      T
+        ( C.R,
+          y,
+          T (C.B, x, a, b, s_a + s_b + 1),
+          T (C.B, z, c, d, s_c + s_d + 1),
+          s_a + s_b + s_c + s_d + 3 )
+  | C.BB, z, T (C.R, y, T (C.R, x, a, b, _), c, _), d, _
+  | C.BB, z, T (C.R, x, a, T (C.R, y, b, c, _), _), d, _
+  | C.BB, x, a, T (C.R, z, T (C.R, y, b, c, _), d, _), _
+  | C.BB, x, a, T (C.R, y, b, T (C.R, z, c, d, _), _), _ ->
+      let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
+      T
+        ( C.B,
+          y,
+          T (C.B, x, a, b, s_a + s_b + 1),
+          T (C.B, z, c, d, s_c + s_d + 1),
+          s_a + s_b + s_c + s_d + 3 )
+  | ( C.BB,
+      x,
+      a,
+      T (C.NB, z, T (C.B, y, b, c, _), (T (C.B, _, _, _, _) as d), _),
+      _ ) ->
+      let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
+      T
+        ( C.B,
+          y,
+          T (C.B, x, a, b, s_a + s_b + 1),
+          balance (C.B, z, c, redden d, s_c + s_d + 1),
+          s_a + s_b + s_c + s_d + 3 )
+  | ( C.BB,
+      z,
+      T (C.NB, x, (T (C.B, _, _, _, _) as a), T (C.B, y, b, c, _), _),
+      d,
+      _ ) ->
+      let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
+      T
+        ( C.B,
+          y,
+          balance (C.B, x, redden a, b, s_a + s_b + 1),
+          T (C.B, z, c, d, s_c + s_d + 1),
+          s_a + s_b + s_c + s_d + 3 )
+  | a, b, c, d, s -> T (a, b, c, d, s)
+
+let insert x s =
+  let rec ins = function
+    | E | EE -> T (C.R, x, E, E, 1)
+    | T (color, y, a, b, s) as n ->
+        if x < y then balance (color, y, ins a, b, s + 1)
+        else if x > y then balance (color, y, a, ins b, s + 1)
+        else n
+  in
+  s |> ins |> blacken
