@@ -1,6 +1,6 @@
 exception Insert of string
 exception ColorChange of string
-exception Empty of string
+exception Empty
 exception IndexOutOfBounds of string
 
 module C = struct
@@ -115,12 +115,12 @@ let insert_no_dup x s =
   ins s |> to_black
 
 let rec max = function
-  | E | EE -> raise (Empty "empty")
+  | E | EE -> raise Empty
   | T (_, x, _, E, _) -> x
   | T (_, _, _, r, _) -> max r
 
 let rec remove_max = function
-  | E | EE -> raise (Empty "empty")
+  | E | EE -> raise Empty
   | T (_, _, _, E, _) as t -> remove t
   | T (c, x, l, r, s) -> bubble (c, x, l, remove_max r, s)
 
