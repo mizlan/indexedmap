@@ -4,26 +4,30 @@ exception ColorChange of string
 module C = struct
   type t = R | B | BB | NB
 
-  let blacken = function
+  let blacker = function
     | NB -> R
     | R -> B
     | B -> BB
-    | _ -> raise (ColorChange "attempt to blacken NegativeBlack")
+    | BB -> raise (ColorChange "attempt to blacken DoubleBlack")
 
-  let redden = function
+  let redder = function
     | BB -> B
     | B -> R
     | R -> NB
-    | _ -> raise (ColorChange "attempt to redden NegativeBlack")
+    | NB -> raise (ColorChange "attempt to redden NegativeBlack")
 end
 
 type 'a tree = E | EE | T of C.t * 'a * 'a tree * 'a tree * int
 
 let blacken t =
-  match t with E | EE -> t | T (c, v, l, r, s) -> T (C.blacken c, v, l, r, s)
+  match t with E | EE -> t | T (c, v, l, r, s) -> T (C.blacker c, v, l, r, s)
+
+let to_black t = match t with
+  | E | EE -> t
+  | T (_, x, l, r, s) -> T (C.B, x, l, r, s)
 
 let redden t =
-  match t with E | EE -> t | T (c, v, l, r, s) -> T (C.redden c, v, l, r, s)
+  match t with E | EE -> t | T (c, v, l, r, s) -> T (C.redder c, v, l, r, s)
 
 let is_bb = function EE | T (C.BB, _, _, _, _) -> true | _ -> false
 let sz tree = match tree with E | EE -> 0 | T (_, _, _, _, s) -> s
@@ -85,6 +89,11 @@ let rec balance = function
           s_a + s_b + s_c + s_d + 3 )
   | a, b, c, d, s -> T (a, b, c, d, s)
 
+let bubble = function
+  | color, x, l, r, s when is_bb l || is_bb r ->
+      balance (C.blacker color, x, redden l, redden r, s)
+  | color, x, l, r, s -> balance (color, x, l, r, s)
+
 let insert x s =
   let rec ins = function
     | E | EE -> T (C.R, x, E, E, 1)
@@ -93,4 +102,8 @@ let insert x s =
         else if x > y then balance (color, y, a, ins b, s + 1)
         else n
   in
-  s |> ins |> blacken
+  s |> ins |> to_black
+
+let rec to_list = function
+  | E | EE -> []
+  | T (_, x, l, r, _) -> to_list l @ [x] @ to_list r
