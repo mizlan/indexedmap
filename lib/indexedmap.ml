@@ -98,6 +98,15 @@ let bubble = function
 let insert x s =
   let rec ins = function
     | E | EE -> T (C.R, x, E, E, 1)
+    | T (color, y, a, b, s) ->
+        if x < y then balance (color, y, ins a, b, s + 1)
+        else balance (color, y, a, ins b, s + 1)
+  in
+  ins s |> to_black
+
+let insert_no_dup x s =
+  let rec ins = function
+    | E | EE -> T (C.R, x, E, E, 1)
     | T (color, y, a, b, s) as n ->
         if x < y then balance (color, y, ins a, b, s + 1)
         else if x > y then balance (color, y, a, ins b, s + 1)
@@ -136,7 +145,6 @@ let delete t x =
   in
   del t |> to_black
 
-
 let rec nth t n =
   match t with
   | E | EE -> Error "empty set"
@@ -144,6 +152,20 @@ let rec nth t n =
   | T (_, x, l, r, _) ->
       let i = sz l in
       if i = n then Ok x else if n < i then nth l n else nth r (n - i - 1)
+
+let rec rank t k =
+  match t with
+  | E | EE -> Error "empty set"
+  | T (_, x, l, r, _) -> (
+      if k > x then
+        let ( let* ) = Result.bind in
+        let* p = rank r k in
+        Ok (sz l + 1 + p)
+      else
+        match l with
+        | E | EE -> Ok 0
+        | T (_, x', _, _, _) when x' < x && k = x -> Ok (sz l)
+        | _ -> rank l k)
 
 let rec to_list = function
   | E | EE -> []
