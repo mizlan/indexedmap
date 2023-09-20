@@ -1,5 +1,7 @@
 exception Insert of string
 exception ColorChange of string
+exception Empty of string
+exception IndexOutOfBounds of string
 
 module C = struct
   type t = R | B | BB | NB
@@ -22,9 +24,8 @@ type 'a tree = E | EE | T of C.t * 'a * 'a tree * 'a tree * int
 let blacken t =
   match t with E | EE -> t | T (c, v, l, r, s) -> T (C.blacker c, v, l, r, s)
 
-let to_black t = match t with
-  | E | EE -> t
-  | T (_, x, l, r, s) -> T (C.B, x, l, r, s)
+let to_black t =
+  match t with E | EE -> t | T (_, x, l, r, s) -> T (C.B, x, l, r, s)
 
 let redden t =
   match t with E | EE -> t | T (c, v, l, r, s) -> T (C.redder c, v, l, r, s)
@@ -104,6 +105,14 @@ let insert x s =
   in
   s |> ins |> to_black
 
+let rec nth t n =
+  match t with
+  | E | EE -> Error "empty set"
+  | T (_, _, _, _, s) when n >= s || n < 0 -> Error "index out of bounds"
+  | T (_, x, l, r, _) ->
+      let i = sz l in
+      if i = n then Ok x else if n < i then nth l n else nth r (n - i - 1)
+
 let rec to_list = function
   | E | EE -> []
-  | T (_, x, l, r, _) -> to_list l @ [x] @ to_list r
+  | T (_, x, l, r, _) -> to_list l @ [ x ] @ to_list r
