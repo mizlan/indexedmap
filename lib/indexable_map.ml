@@ -103,7 +103,39 @@ let insert x s =
         else if x > y then balance (color, y, a, ins b, s + 1)
         else n
   in
-  s |> ins |> to_black
+  ins s |> to_black
+
+let rec max = function
+  | E | EE -> raise (Empty "empty")
+  | T (_, x, _, E, _) -> x
+  | T (_, _, _, r, _) -> max r
+
+let rec remove_max = function
+  | E | EE -> raise (Empty "empty")
+  | T (_, _, _, E, _) as t -> remove t
+  | T (c, x, l, r, s) -> bubble (c, x, l, remove_max r, s)
+
+and remove = function
+  | E | EE -> E
+  | T (C.R, _, E, E, _) -> E
+  | T (C.B, _, E, E, _) -> EE
+  | T (C.B, _, E, T (C.R, x, a, b, s), _) | T (C.B, _, T (C.R, x, a, b, s), E, _)
+    ->
+      T (C.B, x, a, b, s)
+  | T (c, _, l, r, s) ->
+      let l' = remove_max l and mx = max l in
+      bubble (c, mx, l', r, s)
+
+let delete t x =
+  let rec del = function
+    | E | EE -> E
+    | T (c, y, a, b, s) as tr ->
+        if x < y then bubble (c, y, del a, b, s)
+        else if x > y then bubble (c, y, a, del b, s)
+        else remove tr
+  in
+  del t |> to_black
+
 
 let rec nth t n =
   match t with
