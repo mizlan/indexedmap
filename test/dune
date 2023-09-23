@@ -1,0 +1,3 @@
+(test
+ (name indexedmap_test)
+ (libraries crowbar indexedmap))
