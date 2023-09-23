@@ -1,5 +1,3 @@
-exception ColorChange of string
-
 module type TOTAL_ORD = sig
   type t
 
@@ -62,6 +60,8 @@ module Make (E : TOTAL_ORD) : S with type elt = E.t = struct
 
   module C = struct
     type t = R | B | BB | NB
+
+    exception ColorChange of string
 
     let blacker = function
       | NB -> R
