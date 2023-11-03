@@ -9,54 +9,51 @@ module type TOTAL_ORD = sig
 end
 
 module type S = sig
-  type elt
-  type t
+  type key
+  type !+'a t
 
-  val empty : t
-  (** [empty] returns the empty set. *)
+  val empty : 'a t
+  (** [empty] returns the empty map. *)
 
-  val is_empty : t -> bool
-  (** [is_empty s] returns [true] if the set [s] is empty. *)
+  val is_empty : 'a t -> bool
+  (** [is_empty s] returns [true] if the map [s] is empty. *)
 
   exception Empty
 
-  val member : elt -> t -> bool
-  (** [member x s] returns whether or not [x] is present in [s] *)
+  val mem : key -> 'a t -> bool
+  (** [mem k m] returns whether or not the key [k] is present in [m] *)
 
-  val insert : elt -> t -> t
-  (** [insert x s] inserts an element [x] into the set [s]. *)
+  val find : key -> 'a t -> (key * 'a) option
+  (** [find k m] returns the value associated with k in [m] *)
 
-  val insert_no_dup : elt -> t -> t
-  (** [insert x s] inserts an element [x] into the set [s] if it isn't already present, otherwise returns [s]. *)
+  val add : key -> 'a -> 'a t -> 'a t
+  (** [add k v m] inserts an element [k] into the map [m] if it isn't already present, otherwise returns [m]. *)
 
-  val add : t -> elt -> t
-  (** [add s x] inserts an element [x] into the set [s]. *)
+  val remove : key -> 'a t -> 'a t
+  (** [remove k m] deletes [k] and its associated value from the map [m]. *)
 
-  val delete : t -> elt -> t
-  (** [delete s x] deletes a copy of [x] from the set [s]. *)
-
-  val nth : t -> int -> elt option
+  val nth : int -> 'a t -> (key * 'a) option
   (** [nth s n] is the nth element of x when viewed in sorted order. *)
 
-  val rank : t -> elt -> int
+  val rank : key -> 'a t -> int
   (** [rank s x] is the number of elements in [s] strictly less than x. *)
 
-  val find_min : t -> elt option
-  (** [find_min s] is the smallest element in [s] or None if empty. *)
+  val find_min : 'a t -> (key * 'a) option
+  (** [find_min k m] is the smallest key (and its associated value) in [m] or None if empty. *)
 
-  val find_max : t -> elt option
-  (** [find_min s] is the largest element in [s] or None if empty. *)
+  val find_max : 'a t -> (key * 'a) option
+  (** [find_max k m] is the largest key (and its associated value) in [m] or None if empty. *)
 
-  val find_first : (elt -> bool) -> t -> elt option
+  val find_first : (key -> bool) -> 'a t -> (key * 'a) option
   (** [find_first f s] where f is a monotonically-increasing function, 
       is the first element x in [s] such that f x is true, or None if none satisfy. *)
 
-  val to_list : t -> elt list
-  (** [to_list s] is the sorted list representation of the set [s]. *)
+  val to_list : 'a t -> (key * 'a) list
+  (** [to_list s] is the sorted list representation of the map [s]. *)
 end
 
-module Make (E : TOTAL_ORD) : S with type elt = E.t = struct
-  type elt = E.t
+module Make (E : TOTAL_ORD) : S with type key = E.t = struct
+  type key = E.t
 
   module C = struct
     type t = R | B | BB | NB
@@ -76,7 +73,7 @@ module Make (E : TOTAL_ORD) : S with type elt = E.t = struct
       | NB -> raise (ColorChange "attempt to redden NegativeBlack")
   end
 
-  type t = E | EE | T of C.t * elt * t * t * int
+  type !+'a t = E | EE | T of C.t * key * 'a * 'a t * 'a t * int
 
   let empty = E
   let is_empty = function E -> true | _ -> false
@@ -87,162 +84,170 @@ module Make (E : TOTAL_ORD) : S with type elt = E.t = struct
   (*   match t with E | EE -> t | T (c, v, l, r, s) -> T (C.blacker c, v, l, r, s) *)
 
   let to_black t =
-    match t with E | EE -> t | T (_, x, l, r, s) -> T (C.B, x, l, r, s)
+    match t with E | EE -> t | T (_, x, v, l, r, s) -> T (C.B, x, v, l, r, s)
 
   let redden t =
-    match t with E | EE -> t | T (c, v, l, r, s) -> T (C.redder c, v, l, r, s)
+    match t with E | EE -> t | T (c, x, v, l, r, s) -> T (C.redder c, x, v, l, r, s)
 
-  let is_bb = function EE | T (C.BB, _, _, _, _) -> true | _ -> false
-  let sz tree = match tree with E | EE -> 0 | T (_, _, _, _, s) -> s
+  let is_bb = function EE | T (C.BB, _, _, _, _, _) -> true | _ -> false
+  let sz tree = match tree with E | EE -> 0 | T (_, _, _, _, _, s) -> s
 
-  let rec member x tree =
+  let rec mem x tree =
     match tree with
     | E | EE -> false
-    | T (_, value, left, right, _) ->
-        if x == value then true
-        else if x < value then member x left
-        else member x right
+    | T (_, key, _, left, right, _) ->
+        if x == key then true
+        else if x < key then mem x left
+        else mem x right
+
+  let rec find x tree =
+    match tree with
+    | E | EE -> None
+    | T (_, key, v, left, right, _) ->
+        if x == key then Some (x, v)
+        else if x < key then find x left
+        else find x right
 
   let rec balance = function
-    | C.B, z, T (C.R, y, T (C.R, x, a, b, _), c, _), d, _
-    | C.B, z, T (C.R, x, a, T (C.R, y, b, c, _), _), d, _
-    | C.B, x, a, T (C.R, z, T (C.R, y, b, c, _), d, _), _
-    | C.B, x, a, T (C.R, y, b, T (C.R, z, c, d, _), _), _ ->
+    | C.B, z, vz, T (C.R, y, vy, T (C.R, x, vx, a, b, _), c, _), d, _
+    | C.B, z, vz, T (C.R, x, vx, a, T (C.R, y, vy, b, c, _), _), d, _
+    | C.B, x, vx, a, T (C.R, z, vz, T (C.R, y, vy, b, c, _), d, _), _
+    | C.B, x, vx, a, T (C.R, y, vy, b, T (C.R, z, vz, c, d, _), _), _ ->
         let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
         T
           ( C.R,
-            y,
-            T (C.B, x, a, b, s_a + s_b + 1),
-            T (C.B, z, c, d, s_c + s_d + 1),
+            y, vy,
+            T (C.B, x, vx, a, b, s_a + s_b + 1),
+            T (C.B, z, vz, c, d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
-    | C.BB, z, T (C.R, y, T (C.R, x, a, b, _), c, _), d, _
-    | C.BB, z, T (C.R, x, a, T (C.R, y, b, c, _), _), d, _
-    | C.BB, x, a, T (C.R, z, T (C.R, y, b, c, _), d, _), _
-    | C.BB, x, a, T (C.R, y, b, T (C.R, z, c, d, _), _), _ ->
+    | C.BB, z, vz, T (C.R, y, vy, T (C.R, x, vx, a, b, _), c, _), d, _
+    | C.BB, z, vz, T (C.R, x, vx, a, T (C.R, y, vy, b, c, _), _), d, _
+    | C.BB, x, vx, a, T (C.R, z, vz, T (C.R, y, vy, b, c, _), d, _), _
+    | C.BB, x, vx, a, T (C.R, y, vy, b, T (C.R, z, vz, c, d, _), _), _ ->
         let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
         T
           ( C.B,
-            y,
-            T (C.B, x, a, b, s_a + s_b + 1),
-            T (C.B, z, c, d, s_c + s_d + 1),
+            y, vy,
+            T (C.B, x, vx, a, b, s_a + s_b + 1),
+            T (C.B, z, vz, c, d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
     | ( C.BB,
-        x,
+        x, vx,
         a,
-        T (C.NB, z, T (C.B, y, b, c, _), (T (C.B, _, _, _, _) as d), _),
+        T (C.NB, z, vz, T (C.B, y, vy, b, c, _), (T (C.B, _, _, _, _, _) as d), _),
         _ ) ->
         let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
         T
           ( C.B,
-            y,
-            T (C.B, x, a, b, s_a + s_b + 1),
-            balance (C.B, z, c, redden d, s_c + s_d + 1),
+            y, vy,
+            T (C.B, x, vx, a, b, s_a + s_b + 1),
+            balance (C.B, z, vz, c, redden d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
     | ( C.BB,
-        z,
-        T (C.NB, x, (T (C.B, _, _, _, _) as a), T (C.B, y, b, c, _), _),
+        z, vz,
+        T (C.NB, x, vx, (T (C.B, _, _, _, _, _) as a), T (C.B, y, vy, b, c, _), _),
         d,
         _ ) ->
         let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
         T
           ( C.B,
-            y,
-            balance (C.B, x, redden a, b, s_a + s_b + 1),
-            T (C.B, z, c, d, s_c + s_d + 1),
+            y, vy,
+            balance (C.B, x, vx, redden a, b, s_a + s_b + 1),
+            T (C.B, z, vz, c, d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
-    | a, b, c, d, s -> T (a, b, c, d, s)
+    | a, b, c, d, e, s -> T (a, b, c, d, e, s)
 
   let bubble = function
-    | color, x, l, r, s when is_bb l || is_bb r ->
-        balance (C.blacker color, x, redden l, redden r, s)
-    | color, x, l, r, s -> balance (color, x, l, r, s)
+    | color, x, v, l, r, s when is_bb l || is_bb r ->
+        balance (C.blacker color, x, v, redden l, redden r, s)
+    | color, x, v, l, r, s -> balance (color, x, v, l, r, s)
 
-  let insert x s =
+  let insert x v s =
     let rec ins = function
-      | E | EE -> T (C.R, x, E, E, 1)
-      | T (color, y, a, b, s) ->
-          if x < y then balance (color, y, ins a, b, s + 1)
-          else balance (color, y, a, ins b, s + 1)
+      | E | EE -> T (C.R, x, v, E, E, 1)
+      | T (color, y, v, a, b, s) ->
+          if x < y then balance (color, y, v, ins a, b, s + 1)
+          else balance (color, y, v, a, ins b, s + 1)
     in
     ins s |> to_black
 
-  let add s x = insert x s
+  let add = insert
 
-  let insert_no_dup x s =
-    let rec ins = function
-      | E | EE -> T (C.R, x, E, E, 1)
-      | T (color, y, a, b, s) as n ->
-          if x < y then balance (color, y, ins a, b, s + 1)
-          else if x > y then balance (color, y, a, ins b, s + 1)
-          else n
-    in
-    ins s |> to_black
+  (* let insert_no_dup x s = *)
+  (*   let rec ins = function *)
+  (*     | E | EE -> T (C.R, x, E, E, 1) *)
+  (*     | T (color, y, a, b, s) as n -> *)
+  (*         if x < y then balance (color, y, ins a, b, s + 1) *)
+  (*         else if x > y then balance (color, y, a, ins b, s + 1) *)
+  (*         else n *)
+  (*   in *)
+  (*   ins s |> to_black *)
 
   let rec find_min = function
     | E | EE -> None
-    | T (_, x, E, _, _) -> Some x
-    | T (_, _, l, _, _) -> find_min l
+    | T (_, x, v, E, _, _) -> Some (x, v)
+    | T (_, _, _, l, _, _) -> find_min l
 
   let rec find_max = function
     | E | EE -> None
-    | T (_, x, _, E, _) -> Some x
-    | T (_, _, _, r, _) -> find_max r
+    | T (_, x, v, _, E, _) -> Some (x, v)
+    | T (_, _, _, _, r, _) -> find_max r
 
   let rec find_first f s =
     match s with
     | E | EE -> None
-    | T (_, x, l, _, _) when f x ->
-        Some (Option.value (find_first f l) ~default:x)
-    | T (_, _, _, r, _) -> find_first f r
+    | T (_, x, v, l, _, _) when f x ->
+        Some (Option.value (find_first f l) ~default:(x, v))
+    | T (_, _, _, _, r, _) -> find_first f r
 
-  let rec remove_max = function
+  let rec internal_remove_max = function
     | E | EE -> raise Empty
-    | T (_, _, _, E, _) as t -> remove t
-    | T (c, x, l, r, s) -> bubble (c, x, l, remove_max r, s)
+    | T (_, _, _, _, E, _) as t -> internal_remove_root t
+    | T (c, x, v , l, r, s) -> bubble (c, x, v, l, internal_remove_max r, s)
 
-  and remove = function
+  and internal_remove_root = function
     | E | EE -> E
-    | T (C.R, _, E, E, _) -> E
-    | T (C.B, _, E, E, _) -> EE
-    | T (C.B, _, E, T (C.R, x, a, b, s), _)
-    | T (C.B, _, T (C.R, x, a, b, s), E, _) ->
-        T (C.B, x, a, b, s)
-    | T (c, _, l, r, s) ->
-        let l' = remove_max l and mx = Option.get (find_max l) in
-        bubble (c, mx, l', r, s)
+    | T (C.R, _, _, E, E, _) -> E
+    | T (C.B, _, _, E, E, _) -> EE
+    | T (C.B, _, _, E, T (C.R, x, v, a, b, s), _)
+    | T (C.B, _, _, T (C.R, x, v, a, b, s), E, _) ->
+        T (C.B, x, v, a, b, s)
+    | T (c, _, _, l, r, s) ->
+        let l' = internal_remove_max l and (mx_x, mx_v) = Option.get (find_max l) in
+        bubble (c, mx_x, mx_v, l', r, s)
 
-  let delete t x =
+  let remove x t =
     let rec del = function
       | E | EE -> E
-      | T (c, y, a, b, s) as tr ->
-          if x < y then bubble (c, y, del a, b, s)
-          else if x > y then bubble (c, y, a, del b, s)
-          else remove tr
+      | T (c, y, v, a, b, s) as tr ->
+          if x < y then bubble (c, y, v, del a, b, s)
+          else if x > y then bubble (c, y, v, a, del b, s)
+          else internal_remove_root tr
     in
     del t |> to_black
 
-  let rec nth t n =
+  let rec nth n t =
     match t with
     | E | EE -> None
-    | T (_, _, _, _, s) when n >= s || n < 0 -> None
-    | T (_, x, l, r, _) ->
+    | T (_, _, _, _, _, s) when n >= s || n < 0 -> None
+    | T (_, x, v, l, r, _) ->
         let i = sz l in
-        if i = n then Some x else if n < i then nth l n else nth r (n - i - 1)
+        if i = n then Some (x, v) else if n < i then nth n l else nth (n - i - 1) r
 
-  let rec rank t k =
+  let rec rank k t =
     match t with
     | E | EE -> 0
-    | T (_, x, l, r, _) -> (
+    | T (_, x, _, l, r, _) -> (
         if k > x then
-          let p = rank r k in
+          let p = rank k r in
           sz l + 1 + p
         else
           match l with
           | E | EE -> 0
-          | T (_, x', _, _, _) when x' < x && k = x -> sz l
-          | _ -> rank l k)
+          | T (_, x', _, _, _, _) when x' < x && k = x -> sz l
+          | _ -> rank k l)
 
   let rec to_list = function
     | E | EE -> []
-    | T (_, x, l, r, _) -> to_list l @ [ x ] @ to_list r
+    | T (_, x, v, l, r, _) -> to_list l @ [ (x, v) ] @ to_list r
 end
