@@ -162,13 +162,13 @@ module Make (E : TOTAL_ORD) : S with type key = E.t = struct
         balance (C.blacker color, x, v, redden l, redden r, s)
     | color, x, v, l, r, s -> balance (color, x, v, l, r, s)
 
-  let add x v s =
+  let add k v s =
     let rec ins = function
-      | E | EE -> T (C.R, x, v, E, E, 1)
-      | T (color, y, v, a, b, s) as n ->
-          if x < y then balance (color, y, v, ins a, b, s + 1)
-          else if x > y then balance (color, y, v, a, ins b, s + 1)
-          else n
+      | E | EE -> T (C.R, k, v, E, E, 1)
+      | T (color, x, v', a, b, s) ->
+          if k < x then balance (color, x, v', ins a, b, s + 1)
+          else if k > x then balance (color, x, v', a, ins b, s + 1)
+          else T (color, x, v, a, b, s)
     in
     ins s |> to_black
 
