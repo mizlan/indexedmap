@@ -1,58 +1,4 @@
-module type TOTAL_ORD = sig
-  type t
-
-  val compare : t -> t -> int
-  (** [compare a b] shall return
-      a negative value if [a] is smaller than [b],
-      [0] if [a] and [b] are equal or
-      a positive value if [a] is greater than [b] *)
-end
-
-module type S = sig
-  type key
-  type !+'a t
-
-  val empty : 'a t
-  (** [empty] returns the empty map. *)
-
-  val is_empty : 'a t -> bool
-  (** [is_empty s] returns [true] if the map [s] is empty. *)
-
-  exception Empty
-
-  val mem : key -> 'a t -> bool
-  (** [mem k m] returns whether or not the key [k] is present in [m] *)
-
-  val find : key -> 'a t -> (key * 'a) option
-  (** [find k m] returns the value associated with k in [m] *)
-
-  val add : key -> 'a -> 'a t -> 'a t
-  (** [add k v m] inserts an element [k] into the map [m] if it isn't already present, otherwise returns [m]. *)
-
-  val remove : key -> 'a t -> 'a t
-  (** [remove k m] deletes [k] and its associated value from the map [m]. *)
-
-  val nth : int -> 'a t -> (key * 'a) option
-  (** [nth s n] is the nth element of x when viewed in sorted order. *)
-
-  val rank : key -> 'a t -> int
-  (** [rank s x] is the number of elements in [s] strictly less than x. *)
-
-  val find_min : 'a t -> (key * 'a) option
-  (** [find_min k m] is the smallest key (and its associated value) in [m] or None if empty. *)
-
-  val find_max : 'a t -> (key * 'a) option
-  (** [find_max k m] is the largest key (and its associated value) in [m] or None if empty. *)
-
-  val find_first : (key -> bool) -> 'a t -> (key * 'a) option
-  (** [find_first f s] where f is a monotonically-increasing function, 
-      is the first element x in [s] such that f x is true, or None if none satisfy. *)
-
-  val to_list : 'a t -> (key * 'a) list
-  (** [to_list s] is the sorted list representation of the map [s]. *)
-end
-
-module Make (E : TOTAL_ORD) : S with type key = E.t = struct
+module Make (E : Sig.TOTAL_ORD) : Sig.S with type key = E.t = struct
   type key = E.t
 
   module C = struct
@@ -87,24 +33,25 @@ module Make (E : TOTAL_ORD) : S with type key = E.t = struct
     match t with E | EE -> t | T (_, x, v, l, r, s) -> T (C.B, x, v, l, r, s)
 
   let redden t =
-    match t with E | EE -> t | T (c, x, v, l, r, s) -> T (C.redder c, x, v, l, r, s)
+    match t with
+    | E | EE -> t
+    | T (c, x, v, l, r, s) -> T (C.redder c, x, v, l, r, s)
 
   let is_bb = function EE | T (C.BB, _, _, _, _, _) -> true | _ -> false
   let sz tree = match tree with E | EE -> 0 | T (_, _, _, _, _, s) -> s
+  let length tree = match tree with E | EE -> 0 | T (_, _, _, _, _, s) -> s
 
   let rec mem x tree =
     match tree with
     | E | EE -> false
     | T (_, key, _, left, right, _) ->
-        if x == key then true
-        else if x < key then mem x left
-        else mem x right
+        if x = key then true else if x < key then mem x left else mem x right
 
   let rec find x tree =
     match tree with
     | E | EE -> None
     | T (_, key, v, left, right, _) ->
-        if x == key then Some (x, v)
+        if x = key then Some (x, v)
         else if x < key then find x left
         else find x right
 
@@ -116,7 +63,8 @@ module Make (E : TOTAL_ORD) : S with type key = E.t = struct
         let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
         T
           ( C.R,
-            y, vy,
+            y,
+            vy,
             T (C.B, x, vx, a, b, s_a + s_b + 1),
             T (C.B, z, vz, c, d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
@@ -127,31 +75,48 @@ module Make (E : TOTAL_ORD) : S with type key = E.t = struct
         let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
         T
           ( C.B,
-            y, vy,
+            y,
+            vy,
             T (C.B, x, vx, a, b, s_a + s_b + 1),
             T (C.B, z, vz, c, d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
     | ( C.BB,
-        x, vx,
+        x,
+        vx,
         a,
-        T (C.NB, z, vz, T (C.B, y, vy, b, c, _), (T (C.B, _, _, _, _, _) as d), _),
+        T
+          ( C.NB,
+            z,
+            vz,
+            T (C.B, y, vy, b, c, _),
+            (T (C.B, _, _, _, _, _) as d),
+            _ ),
         _ ) ->
         let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
         T
           ( C.B,
-            y, vy,
+            y,
+            vy,
             T (C.B, x, vx, a, b, s_a + s_b + 1),
             balance (C.B, z, vz, c, redden d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
     | ( C.BB,
-        z, vz,
-        T (C.NB, x, vx, (T (C.B, _, _, _, _, _) as a), T (C.B, y, vy, b, c, _), _),
+        z,
+        vz,
+        T
+          ( C.NB,
+            x,
+            vx,
+            (T (C.B, _, _, _, _, _) as a),
+            T (C.B, y, vy, b, c, _),
+            _ ),
         d,
         _ ) ->
         let s_a = sz a and s_b = sz b and s_c = sz c and s_d = sz d in
         T
           ( C.B,
-            y, vy,
+            y,
+            vy,
             balance (C.B, x, vx, redden a, b, s_a + s_b + 1),
             T (C.B, z, vz, c, d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
@@ -162,15 +127,16 @@ module Make (E : TOTAL_ORD) : S with type key = E.t = struct
         balance (C.blacker color, x, v, redden l, redden r, s)
     | color, x, v, l, r, s -> balance (color, x, v, l, r, s)
 
-  let add k v s =
+  let add k v m =
+    let add_size = if not (mem k m) then 1 else 0 in
     let rec ins = function
       | E | EE -> T (C.R, k, v, E, E, 1)
       | T (color, x, v', a, b, s) ->
-          if k < x then balance (color, x, v', ins a, b, s + 1)
-          else if k > x then balance (color, x, v', a, ins b, s + 1)
-          else T (color, x, v, a, b, s)
+          if k < x then T (color, x, v', ins a, b, s + add_size)
+          else if k > x then T (color, x, v', a, ins b, s + add_size)
+          else T (color, k, v, a, b, s)
     in
-    ins s |> to_black
+    ins m |> to_black
 
   (* let insert_no_dup x s = *)
   (*   let rec ins = function *)
@@ -202,7 +168,7 @@ module Make (E : TOTAL_ORD) : S with type key = E.t = struct
   let rec internal_remove_max = function
     | E | EE -> raise Empty
     | T (_, _, _, _, E, _) as t -> internal_remove_root t
-    | T (c, x, v , l, r, s) -> bubble (c, x, v, l, internal_remove_max r, s)
+    | T (c, x, v, l, r, s) -> bubble (c, x, v, l, internal_remove_max r, s)
 
   and internal_remove_root = function
     | E | EE -> E
@@ -212,7 +178,8 @@ module Make (E : TOTAL_ORD) : S with type key = E.t = struct
     | T (C.B, _, _, T (C.R, x, v, a, b, s), E, _) ->
         T (C.B, x, v, a, b, s)
     | T (c, _, _, l, r, s) ->
-        let l' = internal_remove_max l and (mx_x, mx_v) = Option.get (find_max l) in
+        let l' = internal_remove_max l
+        and mx_x, mx_v = Option.get (find_max l) in
         bubble (c, mx_x, mx_v, l', r, s)
 
   let remove x t =
@@ -231,7 +198,9 @@ module Make (E : TOTAL_ORD) : S with type key = E.t = struct
     | T (_, _, _, _, _, s) when n >= s || n < 0 -> None
     | T (_, x, v, l, r, _) ->
         let i = sz l in
-        if i = n then Some (x, v) else if n < i then nth n l else nth (n - i - 1) r
+        if i = n then Some (x, v)
+        else if n < i then nth n l
+        else nth (n - i - 1) r
 
   let rec rank k t =
     match t with

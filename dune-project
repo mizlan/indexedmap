@@ -19,7 +19,7 @@
  (name indexedmap)
  (synopsis "Purely-functional order-statistic red-black trees offering great asymptotic performance")
  (description "Purely-functional order-statistic red-black trees offering great asymptotic performance")
- (depends ocaml dune)
+ (depends ocaml dune (alcotest :with-test))
  (tags
   ("data structure" tree)))
 

@@ -1,2 +1,5 @@
 (library
- (name indexedmap))
+ (name indexedmap)
+ (libraries ppx_inline_test)
+ (inline_tests)
+ (preprocess (pps ppx_inline_test)))
