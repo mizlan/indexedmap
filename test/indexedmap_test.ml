@@ -1,5 +1,5 @@
 module IM = Indexedmap.Make (Int)
-module IS = Indexedmap.Make (String)
+module SM = Indexedmap.Make (String)
 
 (*
  * tests on sets, i.e., maps whose values are ()
@@ -46,11 +46,11 @@ let t2 =
     @@ fun l ->
     let ul = List.sort_uniq String.compare l in
     let n = List.length ul in
-    let us = List.fold_right (fun s -> IS.add s ()) ul IS.empty in
+    let us = List.fold_right (fun s -> SM.add s ()) ul SM.empty in
     let nth_output =
-      List.filter_map (fun i -> IS.nth i us) (List.init n Fun.id)
+      List.filter_map (fun i -> SM.nth i us) (List.init n Fun.id)
     in
-    ul = List.map fst (IS.to_list us) && ul = List.map fst nth_output)
+    ul = List.map fst (SM.to_list us) && ul = List.map fst nth_output)
 
 let t20 =
   QCheck2.(
@@ -60,12 +60,12 @@ let t20 =
     @@ fun l ->
     let ul = List.sort_uniq String.compare l in
     let n = List.length ul in
-    let s = List.fold_right (fun x -> IS.add x ()) l IS.empty in
+    let s = List.fold_right (fun x -> SM.add x ()) l SM.empty in
     let nth_output_undeduped =
-      List.map fst @@ List.filter_map (fun i -> IS.nth i s) (List.init n Fun.id)
+      List.map fst @@ List.filter_map (fun i -> SM.nth i s) (List.init n Fun.id)
     in
-    IS.length s = List.length ul
-    && ul = List.map fst (IS.to_list s)
+    SM.length s = List.length ul
+    && ul = List.map fst (SM.to_list s)
     && ul = nth_output_undeduped)
 
 let t3 =
@@ -89,12 +89,12 @@ let t3 =
 (*   add_test ~name:"can rank strings" [ list bytes ] @@ fun l -> *)
 (*   let ul = List.sort_uniq String.compare l in *)
 (*   let n = List.length ul in *)
-(*   let us = List.fold_right (fun x -> IS.add x ()) ul IS.empty in *)
+(*   let us = List.fold_right (fun x -> SM.add x ()) ul SM.empty in *)
 (*   (* test building from un-deduped list to check that IM removes duplicates *) *)
-(*   let s = List.fold_right (fun x -> IS.add x ()) l IS.empty in *)
+(*   let s = List.fold_right (fun x -> SM.add x ()) l SM.empty in *)
 (*   let ranks_eq = *)
-(*     List.for_all2 (fun v i -> IS.rank v us = i) ul (List.init n Fun.id) *)
-(*     && List.for_all2 (fun v i -> IS.rank v s = i) ul (List.init n Fun.id) *)
+(*     List.for_all2 (fun v i -> SM.rank v us = i) ul (List.init n Fun.id) *)
+(*     && List.for_all2 (fun v i -> SM.rank v s = i) ul (List.init n Fun.id) *)
 (*   in *)
 (*   check ranks_eq *)
 (**)
