@@ -32,6 +32,9 @@ module Make (E : Sig.TOTAL_ORD) : Sig.S with type key = E.t = struct
   let to_black t =
     match t with E | EE -> t | T (_, x, v, l, r, s) -> T (C.B, x, v, l, r, s)
 
+  let to_red t =
+    match t with E | EE -> t | T (_, x, v, l, r, s) -> T (C.R, x, v, l, r, s)
+
   let redden t =
     match t with
     | E | EE -> t
@@ -98,7 +101,7 @@ module Make (E : Sig.TOTAL_ORD) : Sig.S with type key = E.t = struct
             y,
             vy,
             T (C.B, x, vx, a, b, s_a + s_b + 1),
-            balance (C.B, z, vz, c, redden d, s_c + s_d + 1),
+            balance (C.B, z, vz, c, to_red d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
     | ( C.BB,
         z,
@@ -117,7 +120,7 @@ module Make (E : Sig.TOTAL_ORD) : Sig.S with type key = E.t = struct
           ( C.B,
             y,
             vy,
-            balance (C.B, x, vx, redden a, b, s_a + s_b + 1),
+            balance (C.B, x, vx, to_red a, b, s_a + s_b + 1),
             T (C.B, z, vz, c, d, s_c + s_d + 1),
             s_a + s_b + s_c + s_d + 3 )
     | a, b, c, d, e, s -> T (a, b, c, d, e, s)
