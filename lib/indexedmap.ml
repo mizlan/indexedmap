@@ -1,6 +1,11 @@
 module Make (E : Indexedmap_intf.TOTAL_ORD) :
   Indexedmap_intf.S with type key = E.t = struct
   type key = E.t
+  type ordering = LT | GT | EQ
+
+  let cmp a b =
+    let o = E.compare a b in
+    if o < 0 then LT else if o = 0 then EQ else GT
 
   module C = struct
     type t = R | B | BB | NB
@@ -48,16 +53,17 @@ module Make (E : Indexedmap_intf.TOTAL_ORD) :
   let rec mem x tree =
     match tree with
     | E | EE -> false
-    | T (_, key, _, left, right, _) ->
-        if x = key then true else if x < key then mem x left else mem x right
+    | T (_, key, _, left, right, _) -> (
+        match cmp x key with EQ -> true | LT -> mem x left | GT -> mem x right)
 
   let rec find x tree =
     match tree with
     | E | EE -> None
-    | T (_, key, v, left, right, _) ->
-        if x = key then Some (x, v)
-        else if x < key then find x left
-        else find x right
+    | T (_, key, v, left, right, _) -> (
+        match cmp x key with
+        | EQ -> Some (x, v)
+        | LT -> find x left
+        | GT -> find x right)
 
   let rec balance = function
     | C.B, z, vz, T (C.R, y, vy, T (C.R, x, vx, a, b, _), c, _), d, _
@@ -135,10 +141,11 @@ module Make (E : Indexedmap_intf.TOTAL_ORD) :
     let add_size = if not (mem k m) then 1 else 0 in
     let rec ins = function
       | E | EE -> T (C.R, k, v, E, E, 1)
-      | T (color, x, v', a, b, s) ->
-          if k < x then T (color, x, v', ins a, b, s + add_size)
-          else if k > x then T (color, x, v', a, ins b, s + add_size)
-          else T (color, k, v, a, b, s)
+      | T (color, x, v', a, b, s) -> (
+          match cmp k x with
+          | LT -> T (color, x, v', ins a, b, s + add_size)
+          | GT -> T (color, x, v', a, ins b, s + add_size)
+          | EQ -> T (color, k, v, a, b, s))
     in
     ins m |> to_black
 
@@ -189,10 +196,11 @@ module Make (E : Indexedmap_intf.TOTAL_ORD) :
   let remove x t =
     let rec del = function
       | E | EE -> E
-      | T (c, y, v, a, b, s) as tr ->
-          if x < y then bubble (c, y, v, del a, b, s)
-          else if x > y then bubble (c, y, v, a, del b, s)
-          else internal_remove_root tr
+      | T (c, y, v, a, b, s) as tr -> (
+          match cmp x y with
+          | LT -> bubble (c, y, v, del a, b, s)
+          | GT -> bubble (c, y, v, a, del b, s)
+          | EQ -> internal_remove_root tr)
     in
     del t |> to_black
 
@@ -216,14 +224,10 @@ module Make (E : Indexedmap_intf.TOTAL_ORD) :
     match t with
     | E | EE -> 0
     | T (_, x, _, l, r, _) -> (
-        if k > x then
-          let p = rank k r in
-          sz l + 1 + p
-        else
-          match l with
-          | E | EE -> 0
-          | T (_, x', _, _, _, _) when x' < x && k = x -> sz l
-          | _ -> rank k l)
+        match cmp k x with
+        | GT -> sz l + 1 + rank k r
+        | EQ -> sz l
+        | LT -> rank k l)
 
   let rec to_list = function
     | E | EE -> []
