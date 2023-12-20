@@ -231,5 +231,6 @@ module Make (E : Indexedmap_intf.TOTAL_ORD) :
 
   let rec to_list = function
     | E | EE -> []
-    | T (_, x, v, l, r, _) -> to_list l @ [ (x, v) ] @ to_list r
+    (* TODO: inefficient *)
+    | T (_, x, v, l, r, _) -> to_list l @ ((x, v) :: to_list r)
 end
