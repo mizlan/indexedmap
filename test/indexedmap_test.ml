@@ -132,4 +132,4 @@ let () =
     List.map QCheck_alcotest.to_alcotest [ t0; t00; t1; t2; t20; t3; t4 ]
   in
   let map_suite = List.map QCheck_alcotest.to_alcotest [ t5 ] in
-  Alcotest.run "my test" [ ("set", set_suite); ("map", map_suite) ]
+  Alcotest.run "Indexedmap" [ ("set operations", set_suite); ("map operations", map_suite) ]
