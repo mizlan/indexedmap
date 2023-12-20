@@ -1,5 +1,6 @@
 module IM = Indexedmap.Make (Int)
 module SM = Indexedmap.Make (String)
+module OIM = Map.Make (Int)
 
 (*
  * tests on sets, i.e., maps whose values are ()
@@ -98,29 +99,39 @@ let t3 =
 (*   in *)
 (*   check ranks_eq *)
 (**)
-(* (* *)
-   (*     * tests on maps to int *)
-   (*     *) *)
-(**)
-(* let () = *)
-(*   add_test ~name:"can act as frequency map" [ list (tuple (int, int)) ] *)
-(*   @@ fun l -> *)
-(*   let ul = List.sort_uniq Int.compare l in *)
-(*   let n = List.length ul in *)
-(*   let us = List.fold_right (fun x -> IM.add x ()) ul IM.empty in *)
-(*   let s = List.fold_right (fun x -> IM.add x ()) l IM.empty in *)
-(*   let nth_output = *)
-(*     List.filter_map (fun i -> IM.nth i us) (List.init n Fun.id) *)
-(*   in *)
-(*   let nth_output_undeduped = *)
-(*     List.filter_map (fun i -> IM.nth i s) (List.init n Fun.id) *)
-(*   in *)
-(*   check_eq ul (List.map fst (IM.to_list us)); *)
-(*   check_eq ul (List.map fst nth_output); *)
-(*   check_eq ul (List.map fst nth_output_undeduped) *)
+
+(*
+ * tests on maps to int
+ *)
+
+(* let t4 = *)
+(*   QCheck2.( *)
+(*     Test.make ~name:"frequency table of ints" *)
+(*       ~print:Print.(list int) *)
+(*       Gen.(list int) *)
+(*     @@ fun l -> *)
+(*     let m = *)
+(*       List.fold_left *)
+(*         (fun acc x -> *)
+(*           OIM.update x (function None -> Some 1 | Some x -> Some (x + 1)) acc) *)
+(*         OIM.empty l *)
+(*     in *)
+(*     let n = OIM.cardinal m in *)
+(*     let us = List.fold_right (fun x -> IM.add x ()) ul IM.empty in *)
+(*     let s = List.fold_right (fun x -> IM.add x ()) l IM.empty in *)
+(*     let nth_output = *)
+(*       List.filter_map (fun i -> IM.nth i us) (List.init n Fun.id) *)
+(*     in *)
+(*     let nth_output_undeduped = *)
+(*       List.filter_map (fun i -> IM.nth i s) (List.init n Fun.id) *)
+(*     in *)
+(*     ul = List.map fst (IM.to_list us) *)
+(*     && ul = List.map fst nth_output *)
+(*     && ul = List.map fst nth_output_undeduped) *)
 
 let () =
   let set_suite =
     List.map QCheck_alcotest.to_alcotest [ t0; t00; t1; t2; t20; t3 ]
   in
-  Alcotest.run "my test" [ ("set", set_suite) ]
+  (* let map_suite = List.map QCheck_alcotest.to_alcotest [ t4 ] in *)
+  Alcotest.run "my test" [ ("set", set_suite); (* ("map", map_suite) *) ]

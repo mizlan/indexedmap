@@ -1,4 +1,4 @@
-module Make (E : Sig.TOTAL_ORD) : Sig.S with type key = E.t = struct
+module Make (E : Indexedmap_intf.TOTAL_ORD) : Indexedmap_intf.S with type key = E.t = struct
   type key = E.t
 
   module C = struct
