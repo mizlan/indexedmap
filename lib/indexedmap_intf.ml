@@ -34,6 +34,8 @@ module type S = sig
   val remove : key -> 'a t -> 'a t
   (** [remove k m] deletes [k] and its associated value from the map [m]. *)
 
+  val update : key -> ('a option -> 'a option) -> 'a t -> 'a t
+
   val nth : int -> 'a t -> (key * 'a) option
   (** [nth s n] is the nth element of x when viewed in sorted order. *)
 

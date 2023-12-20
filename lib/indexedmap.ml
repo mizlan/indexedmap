@@ -196,6 +196,12 @@ module Make (E : Indexedmap_intf.TOTAL_ORD) :
     in
     del t |> to_black
 
+  let update k f m =
+    match find k m with
+    | None -> ( match f None with None -> m | Some v -> add k v m)
+    | Some (_, v) -> (
+        match f (Some v) with None -> remove k m | Some v' -> add k v' m)
+
   let rec nth n t =
     match t with
     | E | EE -> None
