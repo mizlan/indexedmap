@@ -86,52 +86,50 @@ let t3 =
     in
     ranks_eq)
 
-(* let () = *)
-(*   add_test ~name:"can rank strings" [ list bytes ] @@ fun l -> *)
-(*   let ul = List.sort_uniq String.compare l in *)
-(*   let n = List.length ul in *)
-(*   let us = List.fold_right (fun x -> SM.add x ()) ul SM.empty in *)
-(*   (* test building from un-deduped list to check that IM removes duplicates *) *)
-(*   let s = List.fold_right (fun x -> SM.add x ()) l SM.empty in *)
-(*   let ranks_eq = *)
-(*     List.for_all2 (fun v i -> SM.rank v us = i) ul (List.init n Fun.id) *)
-(*     && List.for_all2 (fun v i -> SM.rank v s = i) ul (List.init n Fun.id) *)
-(*   in *)
-(*   check ranks_eq *)
-(**)
+let t4 =
+  QCheck2.(
+    Test.make ~name:"can rank strings"
+      ~print:Print.(list string)
+      Gen.(list_size (0 -- 20) string_small)
+    @@ fun l ->
+    let ul = List.sort_uniq String.compare l in
+    let n = List.length ul in
+    let us = List.fold_right (fun x -> SM.add x ()) ul SM.empty in
+    (* test building from un-deduped list to check that IM removes duplicates *)
+    let s = List.fold_right (fun x -> SM.add x ()) l SM.empty in
+    let ranks_eq =
+      List.for_all2 (fun v i -> SM.rank v us = i) ul (List.init n Fun.id)
+      && List.for_all2 (fun v i -> SM.rank v s = i) ul (List.init n Fun.id)
+    in
+    ranks_eq)
 
 (*
  * tests on maps to int
  *)
 
-(* let t4 = *)
-(*   QCheck2.( *)
-(*     Test.make ~name:"frequency table of ints" *)
-(*       ~print:Print.(list int) *)
-(*       Gen.(list int) *)
-(*     @@ fun l -> *)
-(*     let m = *)
-(*       List.fold_left *)
-(*         (fun acc x -> *)
-(*           OIM.update x (function None -> Some 1 | Some x -> Some (x + 1)) acc) *)
-(*         OIM.empty l *)
-(*     in *)
-(*     let n = OIM.cardinal m in *)
-(*     let us = List.fold_right (fun x -> IM.add x ()) ul IM.empty in *)
-(*     let s = List.fold_right (fun x -> IM.add x ()) l IM.empty in *)
-(*     let nth_output = *)
-(*       List.filter_map (fun i -> IM.nth i us) (List.init n Fun.id) *)
-(*     in *)
-(*     let nth_output_undeduped = *)
-(*       List.filter_map (fun i -> IM.nth i s) (List.init n Fun.id) *)
-(*     in *)
-(*     ul = List.map fst (IM.to_list us) *)
-(*     && ul = List.map fst nth_output *)
-(*     && ul = List.map fst nth_output_undeduped) *)
+let t5 =
+  QCheck2.(
+    Test.make ~name:"frequency table of ints"
+      ~print:Print.(list int)
+      Gen.(list int)
+    @@ fun l ->
+    let m =
+      List.fold_left
+        (fun acc x ->
+          OIM.update x (function None -> Some 1 | Some x -> Some (x + 1)) acc)
+        OIM.empty l
+    in
+    let im =
+      List.fold_left
+        (fun acc x ->
+          IM.update x (function None -> Some 1 | Some x -> Some (x + 1)) acc)
+        IM.empty l
+    in
+    OIM.to_list m = IM.to_list im)
 
 let () =
   let set_suite =
-    List.map QCheck_alcotest.to_alcotest [ t0; t00; t1; t2; t20; t3 ]
+    List.map QCheck_alcotest.to_alcotest [ t0; t00; t1; t2; t20; t3; t4 ]
   in
-  (* let map_suite = List.map QCheck_alcotest.to_alcotest [ t4 ] in *)
-  Alcotest.run "my test" [ ("set", set_suite); (* ("map", map_suite) *) ]
+  let map_suite = List.map QCheck_alcotest.to_alcotest [ t5 ] in
+  Alcotest.run "my test" [ ("set", set_suite); ("map", map_suite) ]
