@@ -229,8 +229,12 @@ module Make (E : Indexedmap_intf.TOTAL_ORD) :
         | EQ -> sz l
         | LT -> rank k l)
 
-  let rec to_list = function
-    | E | EE -> []
-    (* TODO: inefficient *)
-    | T (_, x, v, l, r, _) -> to_list l @ ((x, v) :: to_list r)
+  let to_list t =
+    let rec go acc = function
+      | E | EE -> acc
+      | T (_, x, v, l, r, _) ->
+          let acc' = go acc r in
+          go ((x, v) :: acc') l
+    in
+    go [] t
 end
