@@ -32,9 +32,6 @@ module Make (E : Indexedmap_intf.TOTAL_ORD) :
 
   exception Empty
 
-  (* let blacken t = *)
-  (*   match t with E | EE -> t | T (c, v, l, r, s) -> T (C.blacker c, v, l, r, s) *)
-
   let to_black t =
     match t with E | EE -> t | T (_, x, v, l, r, s) -> T (C.B, x, v, l, r, s)
 
@@ -148,16 +145,6 @@ module Make (E : Indexedmap_intf.TOTAL_ORD) :
           | EQ -> T (color, k, v, a, b, s))
     in
     ins m |> to_black
-
-  (* let insert_no_dup x s = *)
-  (*   let rec ins = function *)
-  (*     | E | EE -> T (C.R, x, E, E, 1) *)
-  (*     | T (color, y, a, b, s) as n -> *)
-  (*         if x < y then balance (color, y, ins a, b, s + 1) *)
-  (*         else if x > y then balance (color, y, a, ins b, s + 1) *)
-  (*         else n *)
-  (*   in *)
-  (*   ins s |> to_black *)
 
   let rec find_min = function
     | E | EE -> None

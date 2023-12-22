@@ -94,8 +94,10 @@ let t4 =
     @@ fun l ->
     let ul = List.sort_uniq String.compare l in
     let n = List.length ul in
+
+    (* also test from un-deduped list to check that IM removes duplicates *)
     let us = List.fold_right (fun x -> SM.add x ()) ul SM.empty in
-    (* test building from un-deduped list to check that IM removes duplicates *)
+
     let s = List.fold_right (fun x -> SM.add x ()) l SM.empty in
     let ranks_eq =
       List.for_all2 (fun v i -> SM.rank v us = i) ul (List.init n Fun.id)
